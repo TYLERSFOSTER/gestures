@@ -1,3 +1,6 @@
+import math
+import numpy as np
+
 import generate
 
 
@@ -6,11 +9,13 @@ class Strikes():
     self.count = count
     self.t_0 = t_0
     self.delta_t = delta_t
+    count_width = math.ceil(np.log10(count))
 
     self.strike_dict = {}
     for idx in range(self.count):
       param_dict = generate.parameters(16, 0., 1., 440., 330.)
       compound_signal = generate.Strikes(param_dict)
-
+      padded_idx = str(idx).zfill(count_width)
+      file_name = 'output_{}.wav'.format(idx)
       compound_signal.save_wav('output.wav', 88200)
 
