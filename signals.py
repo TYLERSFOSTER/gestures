@@ -172,7 +172,9 @@ class CompoundSignal():
       weight = component_signal_curves['weight']
 
       component_signal_value = component_modulated_signal.eval(t)
-      weighted_term = weight * component_signal_value
+      max_frequency = torch.max(component_frequency_curve.eval(t))
+      freq_rel_weight = 1/max_frequency
+      weighted_term = weight * freq_rel_weight  * component_signal_value
 
       signal_value = signal_value + weighted_term
 
@@ -210,48 +212,51 @@ if __name__ == "__main__":
   step_count = math.floor((2 * 1.0) / step_size)
   input_points = [-1.0 + step_size * k for k in range(step_count)]
 
-  param_dict = sample_parameters(16, 0., 1., 330., 55.)
+  param_dict = sample_parameters(16, 0., 1., 440., 330.)
   compound_signal = CompoundSignal(param_dict)
-  tensor = compound_signal.eval(torch.Tensor(input_points))
 
   compound_signal.save_wav('output.wav', 88200)
   
+  tensor = compound_signal.eval(torch.Tensor(input_points))
+  y_range = 1.15 * torch.max(torch.abs(tensor))
+  tensor = tensor / y_range
   numpy_array = tensor.numpy()
   plt.plot(numpy_array)
   plt.xlabel('Index')
   plt.ylabel('Value')
   plt.title('1D Torch Tensor Plot')
   plt.xlim(0, len(numpy_array) - 1)
-  plt.ylim(-2., 2.)
+  plt.ylim(-1., 1.)
   plt.show()
   plt.clf()
 
 
-  amplitude_curve = ParamCurve(
-    0.0, 0.5,
-    0.0, 1.0, 0.0,
-    -0.35, -0.15, 0.35,
-    2.5, 2.5)
+  # amplitude_curve = ParamCurve(
+  #   0.0, 0.5,
+  #   0.0, 1.0, 0.0,
+  #   -0.35, -0.15, 0.35,
+  #   2.5, 2.5)
 
-  frequency_curve = ParamCurve(
-    0.0, 0.5,
-    440.0, 880.0, 220.0,
-    -0.2, -0.1, 0.25,
-    3.0, 0.5)
+  # frequency_curve = ParamCurve(
+  #   0.0, 0.5,
+  #   440.0, 880.0, 220.0,
+  #   -0.2, -0.1, 0.25,
+  #   3.0, 0.5)
 
-  step_size = 0.001
-  step_count = math.floor((2 * amplitude_curve.delta_t) / step_size)
-  input_points = [amplitude_curve.time_start + step_size * k for k in range(step_count)]
+  # step_size = 0.001
+  # step_count = math.floor((2 * amplitude_curve.delta_t) / step_size)
+  # input_points = [amplitude_curve.time_start + step_size * k for k in range(step_count)]
 
-  signal = ModulatedSignal(amplitude_curve, frequency_curve, 0.)
-  tensor = signal.eval(torch.Tensor(input_points))
+  # signal = ModulatedSignal(amplitude_curve, frequency_curve, 0.)
+  # tensor = signal.eval(torch.Tensor(input_points))
+  # y_range = 1.15 * torch.max(torch.abs(tensor))
+  # tensor = tensor / y_range
 
-  numpy_array = tensor.numpy()
-  plt.plot(numpy_array)
-  plt.xlabel('Index')
-  plt.ylabel('Value')
-  plt.title('1D Torch Tensor Plot')
-  plt.xlim(0, len(numpy_array) - 1)
-  plt.ylim(-1.5, 1.5)
-  plt.show()
-  plt.clf()
+  # numpy_array = tensor.numpy()
+  # plt.plot(numpy_array)
+  # plt.xlabel('Index')
+  # plt.ylabel('Value')
+  # plt.title('1D Torch Tensor Plot')
+  # plt.xlim(0, len(numpy_array) - 1)
+  # plt.show()
+  # plt.clf()
