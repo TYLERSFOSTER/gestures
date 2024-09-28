@@ -5,7 +5,7 @@ import torchaudio
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 
-from automations import ParamCurve
+from .automations import ParamCurve
 
 
 
@@ -104,13 +104,17 @@ def sample_parameters(number_of_samples : int, t_0 : float, delta_t : float, mea
     parameter_dictionary[k] = {}
     parameter_dictionary[k]['time_interval'] = (t_0, delta_t)
 
-    parameter_dictionary[k]['amp_events'] = (amp_time_in[k], amp_time_mid[k], amp_time_out[k])
-    parameter_dictionary[k]['amplitude'] = (0.0, amplitude_mid[k], 0.0)
-    parameter_dictionary[k]['amp_deg'] = (amp_deg_in[k], amp_deg_out[k])
-
     parameter_dictionary[k]['freq_events'] = (freq_time_in[k], freq_time_mid[k], freq_time_out[k])
     parameter_dictionary[k]['frequency'] = (frequency_in[k], frequency_mid[k], frequency_out[k])
     parameter_dictionary[k]['freq_deg'] = (freq_deg_in[k], freq_deg_out[k])
+
+    top_freq = max((freq_time_in[k], freq_time_mid[k], freq_time_out[k], 1.0))
+    amp_in = amp_time_mid[k] - (amp_time_mid[k] - amp_time_in[k]) / top_freq**.1
+    amp_out = amp_time_mid[k] + (amp_time_out[k] - amp_time_mid[k]) / top_freq**.1
+
+    parameter_dictionary[k]['amp_events'] = (amp_in, amp_time_mid[k], amp_out)
+    parameter_dictionary[k]['amplitude'] = (0.0, amplitude_mid[k], 0.0)
+    parameter_dictionary[k]['amp_deg'] = (amp_deg_in[k], amp_deg_out[k])
 
     parameter_dictionary[k]['phase_shift'] = phase_shift
 

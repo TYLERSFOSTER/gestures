@@ -1,4 +1,4 @@
 
-from .strikes import Strikes
+from .strikes import StrikeSet
 
 __all__ = ["ClassA", "function_a", "ClassB", "function_b"]

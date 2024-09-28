@@ -120,6 +120,7 @@ class ParamCurve():
     return curve_value
 
 
+
 if __name__ == "__main__":
   curve1 = ParamCurve(
     0.0, 0.5,
