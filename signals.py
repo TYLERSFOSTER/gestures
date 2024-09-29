@@ -169,11 +169,11 @@ class CompoundSignal():
   def eval(self, t):
     signal_value = torch.zeros_like(t)
 
-    for key, component_signal_curves in self.signal_dict.items():
-      component_modulated_signal = component_signal_curves['modulated_signal']
+    for key in self.signal_dict.keys():
+      component_modulated_signal = self.signal_dict[key]['modulated_signal']
       component_amplitude_curve = self.signal_dict[key]['amplitude_curve']
       component_frequency_curve = self.signal_dict[key]['frequency_curve']
-      weight = component_signal_curves['weight']
+      weight = self.signal_dict[key]['weight']
 
       component_signal_value = component_modulated_signal.eval(t)
       max_frequency = torch.max(component_frequency_curve.eval(t))
@@ -208,6 +208,107 @@ class CompoundSignal():
     wavfile.write(file_path, sample_rate, audio_numpy_int32)
     print('Signal saved as \'{}\' at sample rate {}.'.format(file_path, sample_rate))
 
+
+
+class DoubModCompSignal():
+  def __init__(self,
+               parameter_dictionary_0 : dict,
+               parameter_dictionary_1 : dict):
+    assert isinstance(parameter_dictionary_0, dict)
+    assert isinstance(parameter_dictionary_1, dict)
+    assert len(parameter_dictionary_0) > 0
+    assert len(parameter_dictionary_1) > 0
+    assert len(parameter_dictionary_0) == len(parameter_dictionary_1)
+    assert parameter_dictionary_0.keys() == parameter_dictionary_1.keys()
+    assert parameter_dictionary_0[0]['time_interval'] == parameter_dictionary_1[0]['time_interval']
+    
+    self.t_0, self.delta_t = parameter_dictionary_0[0]['time_interval']
+    self.keys = parameter_dictionary_0.keys()
+
+    self.signal_dict = {}
+    for key in self.keys:
+      modulating_dictionaries = {0 : parameter_dictionary_0[key], 1 : parameter_dictionary_1[key]}
+      self.signal_dict[key] = {0 : None, 1 : None}
+
+      for order in range(2):
+        single_sample = modulating_dictionaries[order]
+        
+        t_amp_in, t_amp_mid, t_amp_out = single_sample['amp_events']
+        v_amp_in, v_amp_mid, v_amp_out = single_sample['amplitude']
+        d_amp_in, d_amp_out = single_sample['amp_deg']
+
+        t_freq_in, t_freq_mid, t_freq_out = single_sample['freq_events']
+        v_freq_in, v_freq_mid, v_freq_out = single_sample['frequency']
+        d_freq_in, d_freq_out = single_sample['freq_deg']
+
+        phase_shift = single_sample['signal_coeff']
+
+        weight = single_sample['signal_coeff']
+
+        amplitude_curve = ParamCurve(self.t_0, self.delta_t,
+                                    v_amp_in, v_amp_mid, v_amp_out,
+                                    t_amp_in, t_amp_mid, t_amp_out,
+                                    d_amp_in, d_amp_out)
+
+        frequency_curve = ParamCurve(self.t_0, self.delta_t,
+                                    v_freq_in, v_freq_mid, v_freq_out,
+                                    t_freq_in, t_freq_mid, t_freq_out,
+                                    d_freq_in, d_freq_out)
+
+        modulated_signal = ModulatedSignal(amplitude_curve, frequency_curve, phase_shift)
+
+        self.signal_dict[key][order] = {}
+        self.signal_dict[key][order]['weight'] = weight
+        self.signal_dict[key][order]['amplitude_curve'] = amplitude_curve
+        self.signal_dict[key][order]['frequency_curve'] = frequency_curve
+        self.signal_dict[key][order]['modulated_signal'] = modulated_signal
+
+  
+  def eval(self, t):
+    signal_value = torch.zeros_like(t)
+
+    for key, self.signal_dict[key] in self.signal_dict.items():
+      component_modulated_signal = self.signal_dict[key][0]['modulated_signal']
+      component_amplitude_curve = self.signal_dict[key][0]['amplitude_curve']
+      component_frequency_curve = self.signal_dict[key][0]['frequency_curve']
+      weight = self.signal_dict[key][0]['weight']
+
+      component_modulated_signal_B = self.signal_dict[key][1]['modulated_signal']
+      component_amplitude_curve_B = self.signal_dict[key][1]['amplitude_curve']
+      component_frequency_curve_B = self.signal_dict[key][1]['frequency_curve']
+
+      component_signal_value = component_modulated_signal.eval(t) * component_modulated_signal_B.eval(t)
+      max_frequency = torch.max(component_frequency_curve.eval(t))
+      freq_rel_weight = 1/max_frequency
+      weighted_term = weight * freq_rel_weight  * component_signal_value
+
+      signal_value = signal_value + weighted_term
+
+    return signal_value
+  
+
+  def save_wav(self, file_path : str, sample_rate : int) -> None:
+    assert isinstance(file_path, str)
+    assert len(file_path) > 3
+    assert file_path.split('.')[-1] == 'wav'
+    assert isinstance(sample_rate, int)
+    assert sample_rate > 0
+
+    sample_count = math.floor(2 * self.delta_t * sample_rate)
+    step_size = 1/sample_rate
+  
+    time_sampling = [self.t_0 - self.delta_t + k * step_size for k in range(sample_count)]
+    t = torch.Tensor(time_sampling)
+    t = t.to(dtype=torch.float32)
+
+    signal_value = self.eval(t)
+    scale_factor = torch.max(torch.abs(signal_value))
+    signal_value = signal_value / (1.15 * scale_factor)
+
+    audio_numpy = signal_value.numpy()
+    audio_numpy_int32 = np.int32(audio_numpy * 2147483647)
+    wavfile.write(file_path, sample_rate, audio_numpy_int32)
+    print('Signal saved as \'{}\' at sample rate {}.'.format(file_path, sample_rate))
 
 
 
